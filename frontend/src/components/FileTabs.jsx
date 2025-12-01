@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActionIcon, Tooltip, Menu, TextInput } from '@mantine/core';
 import { IconUpload, IconDownload, IconX, IconEdit, IconPlus } from '@tabler/icons-react';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 export default function FileTabs({ files, activeFileIdx, onTabClick, onTabReorder, onRename, onDelete, onUpload, onDownload, theme, onAddTab }) {
   const [renamingIdx, setRenamingIdx] = useState(null);
