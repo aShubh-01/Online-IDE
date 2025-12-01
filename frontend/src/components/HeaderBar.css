@@ -1,0 +1,109 @@
+/* ===============================
+   HEADER WRAPPER
+================================= */
+.header-bar {
+  height: 56px;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Light theme vars */
+.header-bar.light {
+  --bg: #f8f9fa;
+  --border: #dee2e6;
+  --text: #222;
+}
+
+/* Dark theme vars */
+.header-bar.dark {
+  --bg: #181A1B;
+  --border: #23272e;
+  --text: #fff;
+}
+
+/* ===============================
+   LEFT SECTION
+================================= */
+.left-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-icon {
+  opacity: 0.8;
+}
+
+/* Label */
+.label {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.ml {
+  margin-left: 14px;
+}
+
+/* Select dropdown */
+.select {
+  min-width: 130px;
+}
+
+.select.small {
+  min-width: 80px;
+}
+
+/* ===============================
+   BUTTONS
+================================= */
+.btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Run button */
+.btn.run {
+  background: #228be6;
+  color: #fff;
+}
+
+/* Clear button */
+.btn.clear {
+  background: #e1e1e1;
+  color: #444;
+}
+
+.header-bar.dark .btn.clear {
+  background: #2e2e2e;
+  color: #fff;
+}
+
+/* Theme toggle */
+.btn.theme {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+/* Hover effects */
+.btn:hover {
+  opacity: 0.85;
+  cursor: pointer;
+}
+
+/* ===============================
+   RIGHT SECTION
+================================= */
+.right-section {
+  display: flex;
+  align-items: center;
+}

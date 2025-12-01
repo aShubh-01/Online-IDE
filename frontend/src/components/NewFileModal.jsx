@@ -1,35 +1,43 @@
-import { useState } from 'react';
-import { Modal, TextInput, Button, Group } from '@mantine/core';
+import { useState } from "react";
+import "./NewFileModal.css";
 
 export default function NewFileModal({ opened, onClose, onCreate }) {
-  const [name, setName] = useState('');
-  const [error, setError] = useState('');
+  const [name, setName] = useState("");
+  const [error, setError] = useState("");
 
   const handleCreate = () => {
     if (!name.trim()) {
-      setError('File name is required');
+      setError("File name is required");
       return;
     }
-    setError('');
+    setError("");
     onCreate(name.trim());
-    setName('');
+    setName("");
   };
 
+  if (!opened) return null;
+
   return (
-    <Modal opened={opened} onClose={onClose} title="New File" centered>
-      <TextInput
-        label="File Name"
-        placeholder="e.g. myfile.cpp"
-        value={name}
-        onChange={e => setName(e.target.value)}
-        error={error}
-        mb={16}
-        autoFocus
-      />
-      <Group position="right">
-        <Button onClick={onClose} variant="default">Cancel</Button>
-        <Button onClick={handleCreate} color="blue">Create</Button>
-      </Group>
-    </Modal>
+    <div className="modal-backdrop">
+      <div className="modal-box">
+        <h2 className="modal-title">New File</h2>
+
+        <label className="label">File Name</label>
+        <input
+          type="text"
+          className="modal-input"
+          placeholder="e.g. myfile.cpp"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          autoFocus
+        />
+        {error && <p className="error">{error}</p>}
+
+        <div className="modal-actions">
+          <button className="btn btn-gray" onClick={onClose}>Cancel</button>
+          <button className="btn btn-blue" onClick={handleCreate}>Create</button>
+        </div>
+      </div>
+    </div>
   );
-} 
+}

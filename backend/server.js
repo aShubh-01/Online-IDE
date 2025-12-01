@@ -223,12 +223,13 @@ app.post("/tutor", async (req, res) => {
     if (!prompt)
       return res.status(400).json({ error: "Prompt is required" });
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: process.env.GEMINI_API_MODEL });
     const result = await model.generateContent(prompt);
     const response = result.response.text();
 
     res.json({ response });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });

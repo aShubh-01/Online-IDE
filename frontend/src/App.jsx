@@ -97,7 +97,18 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: `Explain this ${activeFile.language} code, show variable values step-by-step, and suggest improvements.\n\n${activeFile.code}`,
+          prompt: `
+              Explain this ${activeFile.language} code briefly. 
+                Give only:
+                  1) A short summary (2–3 lines)
+                  2) Step-by-step execution in bullet points
+                  3) Final output (if any)
+                  4) 2–3 concise improvement suggestions
+
+                Be minimal and avoid long paragraphs.
+
+                ${activeFile.code}
+          `,
         }),
       });
       const result = await response.json();
@@ -205,7 +216,7 @@ export default function App() {
   return (
     <MantineProvider theme={{ colorScheme: theme }} withGlobalStyles withNormalizeCSS>
       <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', background: theme === 'dark' ? '#181A1B' : '#f8f9fa', overflow: 'hidden' }}>
-        <HeaderBar
+        {/* <HeaderBar
           language={activeFile.language}
           setLanguage={lang => setFiles(files => files.map((f, i) => i === activeFileIdx ? { ...f, language: lang } : f))}
           fontSize={fontSize}
@@ -214,7 +225,7 @@ export default function App() {
           toggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           onRun={handleRun}
           onClear={handleClearOutput}
-        />
+        /> */}
         <FileTabs
           files={files}
           activeFileIdx={activeFileIdx}
