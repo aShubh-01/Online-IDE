@@ -171,6 +171,10 @@ async function executeCode(language, code, input) {
 const recentRuns = [];
 const MAX_RECENT = 10;
 
+app.get('/', (req, res) => {
+  res.send('Online IDE backend working');
+})
+
 // --------------------------------------------------------------
 // Route: Code Runner
 // --------------------------------------------------------------
@@ -194,7 +198,7 @@ app.post("/run", async (req, res) => {
   } catch (err) {
 
     console.log(err);
-    
+
     const errorRun = {
       stdout: "",
       stderr: err.message,
