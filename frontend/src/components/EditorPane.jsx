@@ -51,7 +51,7 @@ export default function EditorPane({ language, fontSize, theme, code, onChange, 
             forceMoveMarkers: true,
           }]);
           try {
-            const res = await fetch('http://localhost:3001/tutor', {
+            const res = await fetch(`${process.env.BACKEND_URL}/tutor`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ prompt }),

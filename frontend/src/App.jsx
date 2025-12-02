@@ -16,6 +16,7 @@ const FILES = [
   { name: 'main.java', language: 'java' },
 ];
 
+
 const DEFAULT_CODE = {
   python: 'print("Hello, World!")',
   javascript: 'console.log("Hello, World!")',
@@ -38,6 +39,8 @@ export default function App() {
   const [chatMessages, setChatMessages] = useState([]);
   const [newFileModalOpen, setNewFileModalOpen] = useState(false);
   const fileInputRef = useRef();
+
+  console.log('Backend URL:', import.meta.env.VITE_BACKEND_URL);
 
   const activeFile = files[activeFileIdx];
 
@@ -71,7 +74,7 @@ export default function App() {
     setStatus('Running...');
     setOutput('Running code...');
     try {
-      const response = await fetch('http://localhost:3001/run', {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/run`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ language: activeFile.language, code: activeFile.code, input }),
@@ -93,7 +96,7 @@ export default function App() {
   const handleAskTutor = async () => {
     setAiTutorResponse('Thinking...');
     try {
-      const response = await fetch('http://localhost:3001/tutor', {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tutor`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -121,7 +124,7 @@ export default function App() {
   const handleAskWrite = async (prompt) => {
     setAiWriteResponse('Thinking...');
     try {
-      const response = await fetch('http://localhost:3001/tutor', {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tutor`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt }),
@@ -329,7 +332,7 @@ export default function App() {
               onChat={msg => {
                 if (!msg.trim()) return;
                 setChatMessages(msgs => [...msgs, { role: 'user', text: msg }]);
-                fetch('http://localhost:3001/tutor', {
+                fetch(`${import.meta.env.VITE_BACKEND_URL}/tutor`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ prompt: msg }),

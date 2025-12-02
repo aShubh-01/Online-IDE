@@ -24,6 +24,7 @@ app.use(
       "http://localhost:5173",
       "https://relaxed-starship-126758.netlify.app",
       "https://68273061b3780e74acaca3d2--animated-custard-b1a884.netlify.app",
+      "https://online-ide-lovat.vercel.app/"
     ],
     credentials: true,
     methods: ["GET", "POST"],
@@ -191,6 +192,9 @@ app.post("/run", async (req, res) => {
 
     res.json(result);
   } catch (err) {
+
+    console.log(err);
+    
     const errorRun = {
       stdout: "",
       stderr: err.message,
