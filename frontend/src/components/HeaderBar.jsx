@@ -4,7 +4,7 @@ import { IconSun, IconMoonStars, IconPlayerPlay, IconTrash, IconLanguage } from 
 const LANGUAGES = [
   { value: 'python', label: 'Python' },
   { value: 'javascript', label: 'JavaScript' },
-  { value: 'java', label: 'Java' },
+  // { value: 'java', label: 'Java' },
   { value: 'cpp', label: 'C++' },
 ];
 

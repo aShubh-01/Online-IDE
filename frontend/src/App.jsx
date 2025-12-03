@@ -13,14 +13,13 @@ const FILES = [
   { name: 'main.py', language: 'python' },
   { name: 'main.js', language: 'javascript' },
   { name: 'main.cpp', language: 'cpp' },
-  { name: 'main.java', language: 'java' },
 ];
 
 
 const DEFAULT_CODE = {
   python: 'print("Hello, World!")',
   javascript: 'console.log("Hello, World!")',
-  java: 'public class temp { public static void main(String[] args) { System.out.println("Hello, World!"); } }',
+  //java: 'public class temp { public static void main(String[] args) { System.out.println("Hello, World!"); } }',
   cpp: '#include <iostream>\nint main() { std::cout << "Hello, World!" << std::endl; return 0; }',
 };
 
@@ -203,7 +202,7 @@ export default function App() {
     let language = 'python';
     if (ext === 'js') language = 'javascript';
     else if (ext === 'cpp') language = 'cpp';
-    else if (ext === 'java') language = 'java';
+    //else if (ext === 'java') language = 'java';
     // Ensure unique name
     let uniqueName = name;
     let idx = 1;
