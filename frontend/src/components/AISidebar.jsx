@@ -24,9 +24,9 @@ export default function AISidebar({
 
   return (
     <div
-  className={`ai-sidebar ${theme}`}
-  style={{ width: "100%", height: "100%", flex: 1 }}
->
+      className={`ai-sidebar ${theme}`}
+      style={{ width: "100%", height: "100%", flex: 1 }}
+    >
 
       {/* Tabs */}
       <div className="tabs">
@@ -108,7 +108,27 @@ export default function AISidebar({
             Insert to Editor
           </button>
 
-          <div className="response-box">{aiWriteResponse}</div>
+          <div className="response-box markdown-output">
+  <ReactMarkdown
+    components={{
+      code: ({ inline, children }) =>
+        inline ? (
+          <code className="inline-code">{children}</code>
+        ) : (
+          <pre className="code-block">
+            <code>{children}</code>
+          </pre>
+        ),
+      strong: ({ children }) => <strong className="strong">{children}</strong>,
+      li: ({ children }) => <li className="list-item">{children}</li>,
+      h2: ({ children }) => <h2 className="heading">{children}</h2>,
+      h3: ({ children }) => <h3 className="heading">{children}</h3>,
+    }}
+  >
+    {aiWriteResponse}
+  </ReactMarkdown>
+</div>
+
         </div>
       )}
 
@@ -128,23 +148,23 @@ export default function AISidebar({
                   msg.text
                 ) : (
                   <div className="response-box markdown-output">
-            <ReactMarkdown
-              components={{
-                code: ({ node, inline, className, children, ...props }) =>
-                  inline ? (
-                    <code className="inline-code">{children}</code>
-                  ) : (
-                    <pre className="code-block"><code>{children}</code></pre>
-                  ),
-                strong: ({ children }) => <strong className="strong">{children}</strong>,
-                li: ({ children }) => <li className="list-item">{children}</li>,
-                h2: ({ children }) => <h2 className="heading">{children}</h2>,
-                h3: ({ children }) => <h3 className="heading">{children}</h3>,
-              }}
-            >
-              {msg.text}
-            </ReactMarkdown>
-          </div>
+                    <ReactMarkdown
+                      components={{
+                        code: ({ node, inline, className, children, ...props }) =>
+                          inline ? (
+                            <code className="inline-code">{children}</code>
+                          ) : (
+                            <pre className="code-block"><code>{children}</code></pre>
+                          ),
+                        strong: ({ children }) => <strong className="strong">{children}</strong>,
+                        li: ({ children }) => <li className="list-item">{children}</li>,
+                        h2: ({ children }) => <h2 className="heading">{children}</h2>,
+                        h3: ({ children }) => <h3 className="heading">{children}</h3>,
+                      }}
+                    >
+                      {msg.text}
+                    </ReactMarkdown>
+                  </div>
                 )}
               </div>
             ))}
