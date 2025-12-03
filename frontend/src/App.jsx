@@ -1,434 +1,500 @@
-import { useState, useEffect, useRef } from "react";
-import {
-  MantineProvider,
-  Button,
-  Group,
-  ActionIcon,
-  Tooltip,
-} from "@mantine/core";
-
-import EditorPane from "./components/EditorPane";
-import AISidebar from "./components/AISidebar";
-import CommandPalette from "./components/CommandPalette";
-import FileTabs from "./components/FileTabs";
-import NewFileModal from "./components/NewFileModal";
-
-import {
-  IconCopy,
-  IconChevronLeft,
-  IconChevronRight,
-} from "@tabler/icons-react";
-
-import "./App.css";
+import { useState, useEffect, useRef } from 'react';
+import { MantineProvider, Textarea, Button, Group, ActionIcon, Tooltip } from '@mantine/core';
+import EditorPane from './components/EditorPane';
+import HeaderBar from './components/HeaderBar';
+import AISidebar from './components/AISidebar';
+import CommandPalette from './components/CommandPalette';
+import FileTabs from './components/FileTabs';
+import NewFileModal from './components/NewFileModal';
+import { IconFiles, IconUpload, IconDownload, IconCopy, IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
+import './App.css';
 
 const FILES = [
-  { name: "main.py", language: "python" },
-  { name: "main.js", language: "javascript" },
-  { name: "main.cpp", language: "cpp" },
+  { name: 'main.py', language: 'python' },
+  { name: 'main.js', language: 'javascript' },
+  { name: 'main.cpp', language: 'cpp' },
 ];
+
 
 const DEFAULT_CODE = {
   python: 'print("Hello, World!")',
   javascript: 'console.log("Hello, World!")',
-  cpp: '#include <iostream>\nint main() { std::cout << "Hello, World!"; }',
+  //java: 'public class temp { public static void main(String[] args) { System.out.println("Hello, World!"); } }',
+  cpp: '#include <iostream>\nint main() { std::cout << "Hello, World!" << std::endl; return 0; }',
 };
 
 export default function App() {
-  const [theme, setTheme] = useState("dark");
-  const [fontSize, setFontSize] = useState("16");
-
-  const [files, setFiles] = useState(
-    FILES.map((f) => ({ ...f, code: DEFAULT_CODE[f.language] }))
-  );
-
+  const [theme, setTheme] = useState('dark');
+  const [fontSize, setFontSize] = useState('16');
+  const [files, setFiles] = useState(FILES.map(f => ({ ...f, code: DEFAULT_CODE[f.language] })));
   const [activeFileIdx, setActiveFileIdx] = useState(0);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-
+  const [aiTutorResponse, setAiTutorResponse] = useState('');
+  const [aiWriteResponse, setAiWriteResponse] = useState('');
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-
-  const [input, setInput] = useState("");
-  const [output, setOutput] = useState("");
-  const [status, setStatus] = useState("Ready");
-
-  const [aiTutorResponse, setAiTutorResponse] = useState("");
-  const [aiWriteResponse, setAiWriteResponse] = useState("");
+  const [input, setInput] = useState('');
+  const [output, setOutput] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [status, setStatus] = useState('Ready');
   const [chatMessages, setChatMessages] = useState([]);
-
   const [newFileModalOpen, setNewFileModalOpen] = useState(false);
+  const fileInputRef = useRef();
 
-  // ⭐ Input Hide/Show
-  const [showInput, setShowInput] = useState(true);
+  // Resize bottom panel
+const [bottomPanelHeight, setBottomPanelHeight] = useState(240);
+const isResizingBottom = useRef(false);
+const startY = useRef(0);
+const startHeight = useRef(0);
 
-  // ⭐ Bottom panel resize
-  const [bottomPanelHeight, setBottomPanelHeight] = useState(260);
-  const isResizingBottom = useRef(false);
-  const startY = useRef(0);
-  const startHeight = useRef(0);
+// Hide/Show Input
+const [showInput, setShowInput] = useState(true);
+
+  console.log('Backend URL:', import.meta.env.VITE_BACKEND_URL);
 
   const activeFile = files[activeFileIdx];
 
-  // Load code from localStorage
   useEffect(() => {
-    setFiles((prev) =>
-      prev.map((f) => {
-        const saved = localStorage.getItem(`code_${f.name}`);
-        return { ...f, code: saved || DEFAULT_CODE[f.language] };
-      })
-    );
+  const handleMouseMove = (e) => {
+    if (!isResizingBottom.current) return;
+    const diff = e.clientY - startY.current;
+    const newHeight = Math.max(120, startHeight.current - diff);
+    setBottomPanelHeight(newHeight);
+  };
+
+  const handleMouseUp = () => {
+    isResizingBottom.current = false;
+  };
+
+  window.addEventListener("mousemove", handleMouseMove);
+  window.addEventListener("mouseup", handleMouseUp);
+
+  return () => {
+    window.removeEventListener("mousemove", handleMouseMove);
+    window.removeEventListener("mouseup", handleMouseUp);
+  };
+}, []);
+
+
+  // Load code from localStorage or default
+  useEffect(() => {
+    setFiles(prev => prev.map((f, i) => {
+      const saved = localStorage.getItem(`code_${f.name}`);
+      return { ...f, code: saved || DEFAULT_CODE[f.language] };
+    }));
   }, []);
 
   // Save code to localStorage
   useEffect(() => {
-    files.forEach((f) => localStorage.setItem(`code_${f.name}`, f.code));
+    files.forEach(f => localStorage.setItem(`code_${f.name}`, f.code));
   }, [files]);
 
-  // Ctrl+P – Command Palette
+  // Command palette shortcut
   useEffect(() => {
     const handler = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "p") {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
         e.preventDefault();
         setCommandPaletteOpen(true);
       }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  // Bottom panel resizing
-  useEffect(() => {
-    const move = (e) => {
-      if (!isResizingBottom.current) return;
-      const dy = e.clientY - startY.current;
-      const newHeight = Math.max(120, startHeight.current - dy);
-      setBottomPanelHeight(newHeight);
-    };
-
-    const stop = () => {
-      isResizingBottom.current = false;
-    };
-
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseup", stop);
-
-    return () => {
-      window.removeEventListener("mousemove", move);
-      window.removeEventListener("mouseup", stop);
-    };
-  }, []);
-
-  // Run Code
+  // Handlers
   const handleRun = async () => {
-    setStatus("Running...");
-    setOutput("Running code...");
-
+    setStatus('Running...');
+    setOutput('Running code...');
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/run`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            language: activeFile.language,
-            code: activeFile.code,
-            input,
-          }),
-        }
-      );
-
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: activeFile.language, code: activeFile.code, input }),
+      });
       const result = await response.json();
-      let out = "";
+      let out = '';
       if (result.stdout) out += result.stdout;
       if (result.stderr) out += `\n[stderr]\n${result.stderr}`;
       setOutput(out);
-      setStatus("Done");
-    } catch (err) {
-      setOutput("Error: " + err.message);
-      setStatus("Error");
+      setStatus('Done');
+    } catch (error) {
+      setOutput('Error: ' + error.message);
+      setStatus('Error');
     }
   };
 
-  const handleClearOutput = () => setOutput("");
+  const handleClearOutput = () => setOutput('');
 
+  const handleAskTutor = async () => {
+    setAiTutorResponse('Thinking...');
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tutor`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: `
+              Explain this ${activeFile.language} code briefly. 
+                Give only:
+                  1) A short summary (2–3 lines)
+                  2) Step-by-step execution in bullet points
+                  3) Final output (if any)
+                  4) 2–3 concise improvement suggestions
+
+                Be minimal and avoid long paragraphs.
+
+                ${activeFile.code}
+          `,
+        }),
+      });
+      const result = await response.json();
+      setAiTutorResponse(result.response);
+    } catch (error) {
+      setAiTutorResponse('Error: ' + error.message);
+    }
+  };
+
+  const handleAskWrite = async (prompt) => {
+    setAiWriteResponse('Thinking...');
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tutor`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+      const result = await response.json();
+      setAiWriteResponse(result.response);
+    } catch (error) {
+      setAiWriteResponse('Error: ' + error.message);
+    }
+  };
+
+  // Only insert code block from AI Write
+  const handleInsertCode = () => {
+    if (aiWriteResponse) {
+      const match = aiWriteResponse.match(/```[a-zA-Z]*\n([\s\S]*?)```/);
+      const codeOnly = match && match[1] ? match[1].trim() : aiWriteResponse.trim();
+      setFiles(files => files.map((f, i) => i === activeFileIdx ? { ...f, code: codeOnly } : f));
+    }
+  };
+
+  // File tab switching
+  const handleTabClick = idx => setActiveFileIdx(idx);
+
+  // File upload
+  const handleFileUpload = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const ext = file.name.split('.').pop();
+    const lang = ext === 'py' ? 'python' : ext === 'js' ? 'javascript' : ext === 'cpp' ? 'cpp' : ext === 'java' ? 'java' : 'plaintext';
+    const reader = new FileReader();
+    reader.onload = evt => {
+      setFiles([...files, { name: file.name, language: lang, code: evt.target.result }]);
+      setActiveFileIdx(files.length);
+    };
+    reader.readAsText(file);
+  };
+
+  // File download
+  const handleDownload = () => {
+    const blob = new Blob([activeFile.code], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = activeFile.name;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Output copy
+  const handleCopyOutput = () => {
+    navigator.clipboard.writeText(output);
+    setStatus('Output copied!');
+    setTimeout(() => setStatus('Ready'), 1000);
+  };
+
+  // Command palette
   const handleCommand = (cmd) => {
-    if (cmd === "run") handleRun();
-    if (cmd === "clear") handleClearOutput();
-    if (cmd === "theme") setTheme(theme === "dark" ? "light" : "dark");
+    if (cmd === 'run') handleRun();
+    if (cmd === 'clear') handleClearOutput();
+    if (cmd === 'theme') setTheme(theme === 'dark' ? 'light' : 'dark');
     setCommandPaletteOpen(false);
   };
 
-  const toggleSidebar = () => setSidebarOpen((v) => !v);
+  // Editor change
+  const handleEditorChange = code => {
+    setFiles(files => files.map((f, i) => i === activeFileIdx ? { ...f, code } : f));
+  };
+
+  // Sidebar toggle
+  const toggleSidebar = () => setSidebarOpen(open => !open);
+
+  // New file creation handler
+  const handleCreateFile = (name) => {
+    // Detect language from extension
+    let ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+    let language = 'python';
+    if (ext === 'js') language = 'javascript';
+    else if (ext === 'cpp') language = 'cpp';
+    //else if (ext === 'java') language = 'java';
+    // Ensure unique name
+    let uniqueName = name;
+    let idx = 1;
+    while (files.some(f => f.name === uniqueName)) {
+      uniqueName = name.replace(/(\.[^.]+)?$/, `_${idx}${ext ? '.' + ext : ''}`);
+      idx++;
+    }
+    setFiles([...files, { name: uniqueName, language, code: DEFAULT_CODE[language] || '' }]);
+    setActiveFileIdx(files.length);
+    setNewFileModalOpen(false);
+  };
 
   return (
-    <MantineProvider
-      theme={{ colorScheme: theme }}
-      withGlobalStyles
-      withNormalizeCSS
-    >
-      <div
-        style={{
-          width: "100vw",
-          height: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          background: theme === "dark" ? "#181A1B" : "#f8f9fa",
-          overflow: "hidden",
-        }}
-      >
-        {/* ⭐ File Tabs */}
+    <MantineProvider theme={{ colorScheme: theme }} withGlobalStyles withNormalizeCSS>
+      <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', background: theme === 'dark' ? '#181A1B' : '#f8f9fa', overflow: 'hidden' }}>
+        {/* <HeaderBar
+          language={activeFile.language}
+          setLanguage={lang => setFiles(files => files.map((f, i) => i === activeFileIdx ? { ...f, language: lang } : f))}
+          fontSize={fontSize}
+          setFontSize={value => setFontSize(value)}
+          theme={theme}
+          toggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          onRun={handleRun}
+          onClear={handleClearOutput}
+        /> */}
         <FileTabs
           files={files}
           activeFileIdx={activeFileIdx}
-          onTabClick={setActiveFileIdx}
+          onTabClick={handleTabClick}
           theme={theme}
+          onTabReorder={(from, to) => {
+            const reordered = Array.from(files);
+            const [moved] = reordered.splice(from, 1);
+            reordered.splice(to, 0, moved);
+            setFiles(reordered);
+            setActiveFileIdx(to);
+          }}
+          onRename={(idx, newName) => {
+            setFiles(files => files.map((f, i) => i === idx ? { ...f, name: newName } : f));
+          }}
+          onDelete={idx => {
+            if (files.length === 1) return;
+            const newFiles = files.filter((_, i) => i !== idx);
+            setFiles(newFiles);
+            setActiveFileIdx(idx === 0 ? 0 : idx - 1);
+          }}
+          onUpload={handleFileUpload}
+          onDownload={idx => {
+            const file = files[idx];
+            const blob = new Blob([file.code], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = file.name;
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
           onAddTab={() => setNewFileModalOpen(true)}
         />
-
         <NewFileModal
           opened={newFileModalOpen}
           onClose={() => setNewFileModalOpen(false)}
-          onCreate={(name) => {
-            const ext = name.split(".").pop();
-            const lang =
-              ext === "js" ? "javascript" : ext === "cpp" ? "cpp" : "python";
-            setFiles([
-              ...files,
-              { name, language: lang, code: DEFAULT_CODE[lang] },
-            ]);
-            setActiveFileIdx(files.length);
-            setNewFileModalOpen(false);
-          }}
+          onCreate={handleCreateFile}
         />
+        <div style={{ flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}>
+          <div style={{ flex: sidebarOpen ? 1 : 1.2, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
+            {/* TOP — Editor */}
+<div
+  style={{
+    height: `calc(100% - ${bottomPanelHeight}px)`,
+    minHeight: 0,
+    minWidth: 0,
+  }}
+>
+  <EditorPane
+    language={activeFile.language}
+    fontSize={fontSize}
+    theme={theme}
+    code={activeFile.code}
+    onChange={handleEditorChange}
+  />
+</div>
 
-        {/* ⭐ MAIN LAYOUT */}
-        <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
-          {/* LEFT SIDE */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-            {/* Editor */}
-            <div
-              style={{
-                flex: 1,
-                height: `calc(100% - ${bottomPanelHeight}px)`,
-                minHeight: 0,
-              }}
-            >
-              <EditorPane
-                language={activeFile.language}
-                theme={theme}
-                fontSize={fontSize}
-                code={activeFile.code}
-                onChange={(c) => {
-                  setFiles((all) =>
-                    all.map((f, i) =>
-                      i === activeFileIdx ? { ...f, code: c } : f
-                    )
-                  );
-                }}
-              />
-            </div>
+{/* DRAG HANDLE */}
+<div
+  onMouseDown={(e) => {
+    isResizingBottom.current = true;
+    startY.current = e.clientY;
+    startHeight.current = bottomPanelHeight;
+  }}
+  style={{
+    height: 6,
+    cursor: "ns-resize",
+    background: theme === "dark" ? "#333" : "#ccc",
+  }}
+></div>
 
-            {/* Drag Bar */}
-            <div
-              onMouseDown={(e) => {
-                isResizingBottom.current = true;
-                startY.current = e.clientY;
-                startHeight.current = bottomPanelHeight;
-              }}
-              style={{
-                height: 6,
-                cursor: "ns-resize",
-                background: theme === "dark" ? "#333" : "#ccc",
-              }}
-            />
+{/* BOTTOM — INPUT/OUTPUT PANEL */}
+<div
+  style={{
+    height: bottomPanelHeight,
+    minHeight: 120,
+    display: "flex",
+    background: theme === "dark" ? "#181A1B" : "#f8f9fa",
+    borderTop: `1px solid ${
+      theme === "dark" ? "#23272e" : "#dee2e6"
+    }`,
+    minWidth: 0,
+    overflow: "hidden",
+  }}
+>
+  {/* INPUT SECTION */}
+  {showInput && (
+    <div
+      style={{
+        flex: 1,
+        padding: 16,
+        display: "flex",
+        flexDirection: "column",
+        minWidth: 0,
+      }}
+    >
+      <label
+        style={{
+          color: theme === "dark" ? "#aaa" : "#333",
+          marginBottom: 4,
+        }}
+      >
+        Input (stdin):
+      </label>
 
-            {/* ⭐ Bottom Panel */}
-            <div
-              style={{
-                height: bottomPanelHeight,
-                minHeight: 120,
-                display: "flex",
-                borderTop: `1px solid ${theme === "dark" ? "#23272e" : "#dee2e6"
-                  }`,
-                background: theme === "dark" ? "#181A1B" : "#fafafa",
-                overflow: "hidden",
-              }}
-            >
-              {/* ⭐ INPUT SECTION */}
-              {showInput && (
-                <div
-                  style={{
-                    flex: 1,
-                    padding: 16,
-                    display: "flex",
-                    flexDirection: "column",
-                  }}
-                >
-                  <label
-                    style={{
-                      color: theme === "dark" ? "#aaa" : "#333",
-                      marginBottom: 4,
-                    }}
-                  >
-                    Input (stdin):
-                  </label>
+      <textarea
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        rows={3}
+        placeholder="Enter input for your program..."
+        style={{
+          marginBottom: 8,
+          fontSize: Number(fontSize),
+          background: theme === "dark" ? "#23272e" : "#fff",
+          color: theme === "dark" ? "#fff" : "#222",
+          border: `1px solid ${
+            theme === "dark" ? "#373a40" : "#ccc"
+          }`,
+          borderRadius: 6,
+          width: "100%",
+          padding: 10,
+          resize: "vertical",
+        }}
+      />
 
-                  <textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    rows={3}
-                    placeholder="Enter input..."
-                    style={{
-                      width: "100%",
-                      padding: 12,
-                      borderRadius: 6,
-                      background: theme === "dark" ? "#23272e" : "#fff",
-                      border: `1px solid ${theme === "dark" ? "#373a40" : "#ccc"
-                        }`,
-                      color: theme === "dark" ? "#fff" : "#111",
-                      resize: "vertical",
-                      marginBottom: 10,
-                    }}
-                  />
+      <Group>
+        <Button onClick={handleRun} color="blue">
+          Run
+        </Button>
+        <Button onClick={handleClearOutput} color="gray">
+          Clear Output
+        </Button>
+      </Group>
+    </div>
+  )}
 
-                  <Group>
-                    <Button onClick={handleRun} color="blue">
-                      Run
-                    </Button>
-                    <Button onClick={handleClearOutput} color="gray">
-                      Clear
-                    </Button>
-                  </Group>
-                </div>
-              )}
+  {/* OUTPUT SECTION */}
+  <div
+    style={{
+      flex: showInput ? 2 : 1,
+      padding: 16,
+      borderLeft: `1px solid ${
+        theme === "dark" ? "#23272e" : "#dee2e6"
+      }`,
+      background: theme === "dark" ? "#1e1e1e" : "#fff",
+      overflowY: "auto",
+      fontFamily: "Fira Mono, Consolas, Monaco, monospace",
+      fontSize: Number(fontSize),
+      color: theme === "dark" ? "#fff" : "#222",
+      position: "relative",
+      minWidth: 0,
+    }}
+  >
+    <label
+      style={{
+        color: theme === "dark" ? "#aaa" : "#333",
+        marginBottom: 4,
+        display: "block",
+      }}
+    >
+      Output:
+    </label>
 
-              {/* ⭐ OUTPUT SECTION */}
-              <div
-                style={{
-                  flex: showInput ? 2 : 1,
-                  padding: 16,
-                  borderLeft: `1px solid ${theme === "dark" ? "#23272e" : "#dee2e6"
-                    }`,
-                  background: theme === "dark" ? "#1e1e1e" : "#fff",
-                  overflowY: "auto",
-                  position: "relative",
-                }}
-              >
-                <label
-                  style={{
-                    color: theme === "dark" ? "#aaa" : "#333",
-                    marginBottom: 4,
-                    display: "block",
-                  }}
-                >
-                  Output:
-                </label>
+    {/* OUTPUT TOOLBAR */}
+    <div
+      style={{
+        position: "absolute",
+        top: 6,
+        right: 8,
+        display: "flex",
+        gap: 6,
+      }}
+    >
+      <Button
+        compact
+        size="xs"
+        variant="light"
+        onClick={() => setShowInput((v) => !v)}
+      >
+        {showInput ? "Hide Input" : "Show Input"}
+      </Button>
 
-                {/* ⭐ OUTPUT TOOLBAR (Hide Input + Copy Output) */}
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 8,
-                    right: 8,
-                    display: "flex",
-                    gap: 8,
-                  }}
-                >
-                  <Button
-                    compact
-                    variant="light"
-                    size="xs"
-                    color="gray"
-                    onClick={() => setShowInput((v) => !v)}
-                  >
-                    {showInput ? "Hide Input" : "Show Input"}
-                  </Button>
+      <Tooltip label="Copy Output">
+        <ActionIcon
+          size="sm"
+          variant="light"
+          onClick={handleCopyOutput}
+        >
+          <IconCopy size={16} />
+        </ActionIcon>
+      </Tooltip>
+    </div>
 
-                  <Tooltip label="Copy Output">
-                    <ActionIcon
-                      color="gray"
-                      variant="light"
-                      onClick={() => navigator.clipboard.writeText(output)}
-                    >
-                      <IconCopy size={16} />
-                    </ActionIcon>
-                  </Tooltip>
-                </div>
-
-                <pre
-                  style={{
-                    marginTop: 32,
-                    whiteSpace: "pre-wrap",
-                    fontFamily: "monospace",
-                    fontSize: Number(fontSize),
-                  }}
-                >
-                  {output}
-                </pre>
-              </div>
-            </div>
-
+    <pre style={{ marginTop: 30, whiteSpace: "pre-wrap" }}>
+      {output}
+    </pre>
+  </div>
+</div>
+  
             {/* Status Bar */}
-            <div
-              style={{
-                height: 28,
-                paddingLeft: 16,
-                display: "flex",
-                alignItems: "center",
-                fontSize: 13,
-                borderTop: `1px solid ${theme === "dark" ? "#333" : "#ddd"
-                  }`,
-                background: theme === "dark" ? "#222" : "#eee",
-              }}
-            >
-              Status: {status}
+            <div style={{ height: 28, background: theme === 'dark' ? '#23272e' : '#e9ecef', color: theme === 'dark' ? '#fff' : '#222', display: 'flex', alignItems: 'center', paddingLeft: 16, fontSize: 13, borderTop: `1px solid ${theme === 'dark' ? '#373a40' : '#dee2e6'}` }}>
+              <span>Status: {status}</span>
+              <span style={{ marginLeft: 24 }}>File: {activeFile.name}</span>
+              <span style={{ marginLeft: 24 }}>Language: {activeFile.language}</span>
             </div>
           </div>
-
-          {/* RIGHT SIDEBAR */}
-          <div
-            style={{
-              width: sidebarOpen ? 360 : 24,
-              flexShrink: 0,            // ⭐ FIX: Prevent sidebar from shrinking
-              transition: "0.2s",
-              borderLeft: `1px solid ${theme === "dark" ? "#333" : "#ccc"
-                }`,
-              background: theme === "dark" ? "#23272e" : "#f8f9fa",
-              position: "relative",
-            }}
-          >
-            {sidebarOpen && (
-              <AISidebar
-                theme={theme}
-                aiTutorResponse={aiTutorResponse}
-                aiWriteResponse={aiWriteResponse}
-                chatMessages={chatMessages}
-              />
-            )}
-
-            <ActionIcon
-              onClick={toggleSidebar}
-              style={{
-                position: "absolute",
-                top: 8,
-                left: sidebarOpen ? -20 : 2,
-                background: theme === "dark" ? "#333" : "#ddd",
+          {/* Collapsible Sidebar */}
+          <div style={{ width: sidebarOpen ? 360 : 24, transition: 'width 0.2s', background: theme === 'dark' ? '#23272e' : '#f8f9fa', borderLeft: `1px solid ${theme === 'dark' ? '#373a40' : '#dee2e6'}`, height: '100%', position: 'relative', display: 'flex', flexDirection: 'row' }}>
+            {sidebarOpen && <AISidebar
+              aiTutorResponse={aiTutorResponse}
+              aiWriteResponse={aiWriteResponse}
+              onAskTutor={handleAskTutor}
+              onAskWrite={handleAskWrite}
+              onInsertCode={handleInsertCode}
+              theme={theme}
+              chatMessages={chatMessages}
+              onChat={msg => {
+                if (!msg.trim()) return;
+                setChatMessages(msgs => [...msgs, { role: 'user', text: msg }]);
+                fetch(`${import.meta.env.VITE_BACKEND_URL}/tutor`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ prompt: msg }),
+                })
+                  .then(res => res.json())
+                  .then(data => setChatMessages(msgs => [...msgs, { role: 'ai', text: data.response }]))
+                  .catch(e => setChatMessages(msgs => [...msgs, { role: 'ai', text: 'Error: ' + e.message }]));
               }}
-            >
-              {sidebarOpen ? (
-                <IconChevronRight size={16} />
-              ) : (
-                <IconChevronLeft size={16} />
-              )}
+            />}
+            <ActionIcon onClick={toggleSidebar} style={{ position: 'absolute', top: 8, left: sidebarOpen ? -20 : 2, zIndex: 10, background: theme === 'dark' ? '#23272e' : '#e9ecef', border: `1px solid ${theme === 'dark' ? '#373a40' : '#dee2e6'}` }}>
+              {sidebarOpen ? <IconChevronRight size={16} /> : <IconChevronLeft size={16} />}
             </ActionIcon>
           </div>
-        </div>
-
-        {/* ⭐ COMMAND PALETTE */}
-        <CommandPalette
-          open={commandPaletteOpen}
-          onClose={() => setCommandPaletteOpen(false)}
-          onCommand={handleCommand}
-          theme={theme}
-        />
+      </div>
+        <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} onCommand={handleCommand} theme={theme} />
       </div>
     </MantineProvider>
   );
