@@ -1,26 +1,25 @@
 import { useState, useEffect, useRef } from 'react';
 import { MantineProvider, Textarea, Button, Group, ActionIcon, Tooltip } from '@mantine/core';
 import EditorPane from './components/EditorPane';
-import HeaderBar from './components/HeaderBar';
 import AISidebar from './components/AISidebar';
 import CommandPalette from './components/CommandPalette';
 import FileTabs from './components/FileTabs';
 import NewFileModal from './components/NewFileModal';
-import { IconFiles, IconUpload, IconDownload, IconCopy, IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
+import { IconCopy, IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
+import { MdAutoAwesome } from "react-icons/md";
 import './App.css';
 
 const FILES = [
   { name: 'main.py', language: 'python' },
-  { name: 'main.js', language: 'javascript' },
-  { name: 'main.cpp', language: 'cpp' },
+  // { name: 'main.js', language: 'javascript' },
+  // { name: 'main.cpp', language: 'cpp' },
+  // { name: 'main.java', language: 'java' }
 ];
-
 
 const DEFAULT_CODE = {
   python: 'print("Hello, World!")',
   javascript: 'console.log("Hello, World!")',
-  //java: 'public class temp { public static void main(String[] args) { System.out.println("Hello, World!"); } }',
-  cpp: '#include <iostream>\nint main() { std::cout << "Hello, World!" << std::endl; return 0; }',
+  cpp: '#include <iostream>\nint main() { std::cout << "Hello, World!"; }',
 };
 
 export default function App() {
@@ -33,468 +32,359 @@ export default function App() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(360);
   const [status, setStatus] = useState('Ready');
   const [chatMessages, setChatMessages] = useState([]);
   const [newFileModalOpen, setNewFileModalOpen] = useState(false);
-  const fileInputRef = useRef();
+  const [showInput, setShowInput] = useState(true);
 
-  // Resize bottom panel
-const [bottomPanelHeight, setBottomPanelHeight] = useState(240);
-const isResizingBottom = useRef(false);
-const startY = useRef(0);
-const startHeight = useRef(0);
+  const [bottomPanelHeight, setBottomPanelHeight] = useState(240);
+  const isResizingBottom = useRef(false);
+  const startY = useRef(0);
+  const startHeight = useRef(0);
 
-// Hide/Show Input
-const [showInput, setShowInput] = useState(true);
-
-  console.log('Backend URL:', import.meta.env.VITE_BACKEND_URL);
+  const isResizingSidebar = useRef(false);
+  const startX = useRef(0);
+  const startSidebarWidth = useRef(0);
 
   const activeFile = files[activeFileIdx];
 
+  const startSidebarResize = (e) => {
+    if (!sidebarOpen) return;
+    isResizingSidebar.current = true;
+    startX.current = e.clientX;
+    startSidebarWidth.current = sidebarWidth;
+  };
+
   useEffect(() => {
-  const handleMouseMove = (e) => {
-    if (!isResizingBottom.current) return;
-    const diff = e.clientY - startY.current;
-    const newHeight = Math.max(120, startHeight.current - diff);
-    setBottomPanelHeight(newHeight);
-  };
+    const handleMouseMove = (e) => {
+      if (isResizingBottom.current) {
+        const diff = e.clientY - startY.current;
+        const newHeight = Math.max(120, startHeight.current - diff);
+        setBottomPanelHeight(newHeight);
+      }
+      if (isResizingSidebar.current) {
+        const diff = e.clientX - startX.current;
+        const newWidth = Math.min(600, Math.max(240, startSidebarWidth.current - diff)); // FIXED
+        setSidebarWidth(newWidth);
+      }
+    };
 
-  const handleMouseUp = () => {
-    isResizingBottom.current = false;
-  };
+    const handleMouseUp = () => {
+      isResizingBottom.current = false;
+      isResizingSidebar.current = false;
+    };
 
-  window.addEventListener("mousemove", handleMouseMove);
-  window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [bottomPanelHeight, sidebarWidth]);
 
-  return () => {
-    window.removeEventListener("mousemove", handleMouseMove);
-    window.removeEventListener("mouseup", handleMouseUp);
-  };
-}, []);
-
-
-  // Load code from localStorage or default
   useEffect(() => {
-    setFiles(prev => prev.map((f, i) => {
-      const saved = localStorage.getItem(`code_${f.name}`);
-      return { ...f, code: saved || DEFAULT_CODE[f.language] };
-    }));
+    setFiles(prev =>
+      prev.map(f => {
+        const saved = localStorage.getItem(`code_${f.name}`);
+        return { ...f, code: saved || DEFAULT_CODE[f.language] };
+      })
+    );
   }, []);
 
-  // Save code to localStorage
   useEffect(() => {
     files.forEach(f => localStorage.setItem(`code_${f.name}`, f.code));
   }, [files]);
 
-  // Command palette shortcut
   useEffect(() => {
     const handler = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+      if ((e.ctrlKey || e.metaKey) && e.key === "p") {
         e.preventDefault();
         setCommandPaletteOpen(true);
       }
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // Handlers
   const handleRun = async () => {
-    setStatus('Running...');
-    setOutput('Running code...');
+    setStatus("Running...");
+    setOutput("Running code...");
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/run`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language: activeFile.language, code: activeFile.code, input }),
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          language: activeFile.language,
+          code: activeFile.code,
+          input,
+        }),
       });
-      const result = await response.json();
-      let out = '';
-      if (result.stdout) out += result.stdout;
-      if (result.stderr) out += `\n[stderr]\n${result.stderr}`;
-      setOutput(out);
-      setStatus('Done');
-    } catch (error) {
-      setOutput('Error: ' + error.message);
-      setStatus('Error');
+      const result = await res.json();
+      setOutput((result.stdout || "") + (result.stderr ? `\n[stderr]\n${result.stderr}` : ""));
+      setStatus("Done");
+    } catch (e) {
+      setOutput("Error: " + e.message);
+      setStatus("Error");
     }
   };
 
-  const handleClearOutput = () => setOutput('');
+  const handleClearOutput = () => setOutput("");
 
   const handleAskTutor = async () => {
-    setAiTutorResponse('Thinking...');
+    setAiTutorResponse("Thinking...");
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tutor`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tutor`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: `
-              Explain this ${activeFile.language} code briefly. 
-                Give only:
-                  1) A short summary (2–3 lines)
-                  2) Step-by-step execution in bullet points
-                  3) Final output (if any)
-                  4) 2–3 concise improvement suggestions
-
-                Be minimal and avoid long paragraphs.
-
-                ${activeFile.code}
-          `,
+          prompt: `Explain this ${activeFile.language} code briefly.\n${activeFile.code}`,
         }),
       });
-      const result = await response.json();
-      setAiTutorResponse(result.response);
-    } catch (error) {
-      setAiTutorResponse('Error: ' + error.message);
+      const data = await res.json();
+      setAiTutorResponse(data.response);
+    } catch (e) {
+      setAiTutorResponse("Error: " + e.message);
     }
   };
 
   const handleAskWrite = async (prompt) => {
-    setAiWriteResponse('Thinking...');
+    setAiWriteResponse("Thinking...");
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tutor`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tutor`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
       });
-      const result = await response.json();
-      setAiWriteResponse(result.response);
-    } catch (error) {
-      setAiWriteResponse('Error: ' + error.message);
+      const data = await res.json();
+      setAiWriteResponse(data.response);
+    } catch (e) {
+      setAiWriteResponse("Error: " + e.message);
     }
   };
 
-  // Only insert code block from AI Write
   const handleInsertCode = () => {
-    if (aiWriteResponse) {
-      const match = aiWriteResponse.match(/```[a-zA-Z]*\n([\s\S]*?)```/);
-      const codeOnly = match && match[1] ? match[1].trim() : aiWriteResponse.trim();
-      setFiles(files => files.map((f, i) => i === activeFileIdx ? { ...f, code: codeOnly } : f));
-    }
+    const match = aiWriteResponse.match(/```[a-zA-Z]*\n([\s\S]*?)```/);
+    const codeOnly = match ? match[1].trim() : aiWriteResponse.trim();
+    setFiles(f => f.map((x, i) => i === activeFileIdx ? { ...x, code: codeOnly } : x));
   };
 
-  // File tab switching
-  const handleTabClick = idx => setActiveFileIdx(idx);
-
-  // File upload
-  const handleFileUpload = e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const ext = file.name.split('.').pop();
-    const lang = ext === 'py' ? 'python' : ext === 'js' ? 'javascript' : ext === 'cpp' ? 'cpp' : ext === 'java' ? 'java' : 'plaintext';
-    const reader = new FileReader();
-    reader.onload = evt => {
-      setFiles([...files, { name: file.name, language: lang, code: evt.target.result }]);
-      setActiveFileIdx(files.length);
-    };
-    reader.readAsText(file);
-  };
-
-  // File download
-  const handleDownload = () => {
-    const blob = new Blob([activeFile.code], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = activeFile.name;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Output copy
   const handleCopyOutput = () => {
     navigator.clipboard.writeText(output);
-    setStatus('Output copied!');
-    setTimeout(() => setStatus('Ready'), 1000);
+    setStatus("Output copied!");
+    setTimeout(() => setStatus("Ready"), 1000);
   };
 
-  // Command palette
-  const handleCommand = (cmd) => {
-    if (cmd === 'run') handleRun();
-    if (cmd === 'clear') handleClearOutput();
-    if (cmd === 'theme') setTheme(theme === 'dark' ? 'light' : 'dark');
-    setCommandPaletteOpen(false);
-  };
+  const toggleSidebar = () => setSidebarOpen(o => !o);
 
-  // Editor change
-  const handleEditorChange = code => {
-    setFiles(files => files.map((f, i) => i === activeFileIdx ? { ...f, code } : f));
-  };
-
-  // Sidebar toggle
-  const toggleSidebar = () => setSidebarOpen(open => !open);
-
-  // New file creation handler
   const handleCreateFile = (name) => {
-    // Detect language from extension
-    let ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
-    let language = 'python';
-    if (ext === 'js') language = 'javascript';
-    else if (ext === 'cpp') language = 'cpp';
-    //else if (ext === 'java') language = 'java';
-    // Ensure unique name
-    let uniqueName = name;
-    let idx = 1;
-    while (files.some(f => f.name === uniqueName)) {
-      uniqueName = name.replace(/(\.[^.]+)?$/, `_${idx}${ext ? '.' + ext : ''}`);
-      idx++;
+    let ext = name.includes(".") ? name.split(".").pop().toLowerCase() : "";
+    let language = ext === "js" ? "javascript" : ext === "cpp" ? "cpp" : "python";
+    let unique = name;
+    let n = 1;
+    while (files.some(f => f.name === unique)) {
+      unique = name.replace(/(\.[^.]+)?$/, `_${n}${ext ? "." + ext : ""}`);
+      n++;
     }
-    setFiles([...files, { name: uniqueName, language, code: DEFAULT_CODE[language] || '' }]);
+    setFiles([...files, { name: unique, language, code: DEFAULT_CODE[language] }]);
     setActiveFileIdx(files.length);
     setNewFileModalOpen(false);
   };
 
   return (
     <MantineProvider theme={{ colorScheme: theme }} withGlobalStyles withNormalizeCSS>
-      <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', background: theme === 'dark' ? '#181A1B' : '#f8f9fa', overflow: 'hidden' }}>
-        {/* <HeaderBar
-          language={activeFile.language}
-          setLanguage={lang => setFiles(files => files.map((f, i) => i === activeFileIdx ? { ...f, language: lang } : f))}
-          fontSize={fontSize}
-          setFontSize={value => setFontSize(value)}
-          theme={theme}
-          toggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          onRun={handleRun}
-          onClear={handleClearOutput}
-        /> */}
+      <div style={{ width: "100vw", height: "100vh", display: "flex", flexDirection: "column", background: theme === "dark" ? "#181A1B" : "#f8f9fa" }}>
+
         <FileTabs
           files={files}
           activeFileIdx={activeFileIdx}
-          onTabClick={handleTabClick}
+          onTabClick={i => setActiveFileIdx(i)}
           theme={theme}
           onTabReorder={(from, to) => {
-            const reordered = Array.from(files);
-            const [moved] = reordered.splice(from, 1);
-            reordered.splice(to, 0, moved);
-            setFiles(reordered);
+            const arr = [...files];
+            const m = arr.splice(from, 1)[0];
+            arr.splice(to, 0, m);
+            setFiles(arr);
             setActiveFileIdx(to);
           }}
-          onRename={(idx, newName) => {
-            setFiles(files => files.map((f, i) => i === idx ? { ...f, name: newName } : f));
-          }}
-          onDelete={idx => {
+          onRename={(i, name) => setFiles(f => f.map((x, idx) => idx === i ? { ...x, name } : x))}
+          onDelete={(i) => {
             if (files.length === 1) return;
-            const newFiles = files.filter((_, i) => i !== idx);
-            setFiles(newFiles);
-            setActiveFileIdx(idx === 0 ? 0 : idx - 1);
+            const arr = files.filter((_, idx) => idx !== i);
+            setFiles(arr);
+            setActiveFileIdx(i === 0 ? 0 : i - 1);
           }}
-          onUpload={handleFileUpload}
-          onDownload={idx => {
-            const file = files[idx];
-            const blob = new Blob([file.code], { type: 'text/plain' });
+          onUpload={(e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const ext = file.name.split(".").pop();
+            const lang = ext === "py" ? "python" : ext === "js" ? "javascript" : ext === "cpp" ? "cpp" : "plaintext";
+            const r = new FileReader();
+            r.onload = ev => {
+              setFiles([...files, { name: file.name, language: lang, code: ev.target.result }]);
+              setActiveFileIdx(files.length);
+            };
+            r.readAsText(file);
+          }}
+          onDownload={(i) => {
+            const f = files[i];
+            const blob = new Blob([f.code], { type: "text/plain" });
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
+            const a = document.createElement("a");
             a.href = url;
-            a.download = file.name;
+            a.download = f.name;
             a.click();
             URL.revokeObjectURL(url);
           }}
+          onRun={handleRun}
           onAddTab={() => setNewFileModalOpen(true)}
         />
-        <NewFileModal
-          opened={newFileModalOpen}
-          onClose={() => setNewFileModalOpen(false)}
-          onCreate={handleCreateFile}
-        />
-        <div style={{ flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}>
-          <div style={{ flex: sidebarOpen ? 1 : 1.2, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
-            {/* TOP — Editor */}
-<div
-  style={{
-    height: `calc(100% - ${bottomPanelHeight}px)`,
-    minHeight: 0,
-    minWidth: 0,
-  }}
->
-  <EditorPane
-    language={activeFile.language}
-    fontSize={fontSize}
-    theme={theme}
-    code={activeFile.code}
-    onChange={handleEditorChange}
-  />
-</div>
 
-{/* DRAG HANDLE */}
-<div
-  onMouseDown={(e) => {
-    isResizingBottom.current = true;
-    startY.current = e.clientY;
-    startHeight.current = bottomPanelHeight;
-  }}
-  style={{
-    height: 6,
-    cursor: "ns-resize",
-    background: theme === "dark" ? "#333" : "#ccc",
-  }}
-></div>
+        <NewFileModal opened={newFileModalOpen} onClose={() => setNewFileModalOpen(false)} onCreate={handleCreateFile} />
 
-{/* BOTTOM — INPUT/OUTPUT PANEL */}
-<div
-  style={{
-    height: bottomPanelHeight,
-    minHeight: 120,
-    display: "flex",
-    background: theme === "dark" ? "#181A1B" : "#f8f9fa",
-    borderTop: `1px solid ${
-      theme === "dark" ? "#23272e" : "#dee2e6"
-    }`,
-    minWidth: 0,
-    overflow: "hidden",
-  }}
->
-  {/* INPUT SECTION */}
-  {showInput && (
-    <div
-      style={{
-        flex: 1,
-        padding: 16,
-        display: "flex",
-        flexDirection: "column",
-        minWidth: 0,
-      }}
-    >
-      <label
-        style={{
-          color: theme === "dark" ? "#aaa" : "#333",
-          marginBottom: 4,
-        }}
-      >
-        Input (stdin):
-      </label>
+        <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+          <div style={{ flex: sidebarOpen ? 1 : 1.2, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-      <textarea
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        rows={3}
-        placeholder="Enter input for your program..."
-        style={{
-          marginBottom: 8,
-          fontSize: Number(fontSize),
-          background: theme === "dark" ? "#23272e" : "#fff",
-          color: theme === "dark" ? "#fff" : "#222",
-          border: `1px solid ${
-            theme === "dark" ? "#373a40" : "#ccc"
-          }`,
-          borderRadius: 6,
-          width: "100%",
-          padding: 10,
-          resize: "vertical",
-        }}
-      />
+            <div style={{ height: `calc(100% - ${bottomPanelHeight}px)` }}>
+              <EditorPane
+                language={activeFile.language}
+                fontSize={fontSize}
+                theme={theme}
+                code={activeFile.code}
+                onChange={code => setFiles(f => f.map((x, i) => i === activeFileIdx ? { ...x, code } : x))}
+              />
+            </div>
 
-      <Group>
-        <Button onClick={handleRun} color="blue">
-          Run
-        </Button>
-        <Button onClick={handleClearOutput} color="gray">
-          Clear Output
-        </Button>
-      </Group>
-    </div>
-  )}
+            <div
+              onMouseDown={(e) => {
+                isResizingBottom.current = true;
+                startY.current = e.clientY;
+                startHeight.current = bottomPanelHeight;
+              }}
+              style={{ height: 6, cursor: "ns-resize", background: theme === "dark" ? "#333" : "#ccc" }}
+            />
 
-  {/* OUTPUT SECTION */}
-  <div
-    style={{
-      flex: showInput ? 2 : 1,
-      padding: 16,
-      borderLeft: `1px solid ${
-        theme === "dark" ? "#23272e" : "#dee2e6"
-      }`,
-      background: theme === "dark" ? "#1e1e1e" : "#fff",
-      overflowY: "auto",
-      fontFamily: "Fira Mono, Consolas, Monaco, monospace",
-      fontSize: Number(fontSize),
-      color: theme === "dark" ? "#fff" : "#222",
-      position: "relative",
-      minWidth: 0,
-    }}
-  >
-    <label
-      style={{
-        color: theme === "dark" ? "#aaa" : "#333",
-        marginBottom: 4,
-        display: "block",
-      }}
-    >
-      Output:
-    </label>
+            <div style={{ height: bottomPanelHeight, display: "flex", borderTop: `1px solid ${theme === "dark" ? "#23272e" : "#ccc"}` }}>
 
-    {/* OUTPUT TOOLBAR */}
-    <div
-      style={{
-        position: "absolute",
-        top: 6,
-        right: 8,
-        display: "flex",
-        gap: 6,
-      }}
-    >
-      <Button
-        compact
-        size="xs"
-        variant="light"
-        onClick={() => setShowInput((v) => !v)}
-      >
-        {showInput ? "Hide Input" : "Show Input"}
-      </Button>
+              {showInput && (
+                <div style={{ flex: 1, padding: 16 }}>
+                  <label style={{ color: theme === "dark" ? "#aaa" : "#222" }}>Input (stdin):</label>
+                  <textarea
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    rows={3}
+                    style={{
+                      width: "100%",
+                      marginTop: 4,
+                      background: theme === "dark" ? "#23272e" : "#fff",
+                      color: theme === "dark" ? "#fff" : "#000",
+                      border: "1px solid #555",
+                      borderRadius: 6,
+                      padding: 10
+                    }}
+                  />
+                </div>
+              )}
 
-      <Tooltip label="Copy Output">
-        <ActionIcon
-          size="sm"
-          variant="light"
-          onClick={handleCopyOutput}
-        >
-          <IconCopy size={16} />
-        </ActionIcon>
-      </Tooltip>
-    </div>
+              <div style={{
+                flex: showInput ? 2 : 1,
+                padding: 16,
+                borderLeft: `1px solid ${theme === "dark" ? "#23272e" : "#ccc"}`,
+                background: theme === "dark" ? "#1e1e1e" : "#fff",
+                overflowY: "auto",
+                position: "relative"
+              }}>
+                <label style={{ color: theme === "dark" ? "#aaa" : "#222" }}>Output:</label>
 
-    <pre style={{ marginTop: 30, whiteSpace: "pre-wrap" }}>
-      {output}
-    </pre>
-  </div>
-</div>
-  
-            {/* Status Bar */}
-            <div style={{ height: 28, background: theme === 'dark' ? '#23272e' : '#e9ecef', color: theme === 'dark' ? '#fff' : '#222', display: 'flex', alignItems: 'center', paddingLeft: 16, fontSize: 13, borderTop: `1px solid ${theme === 'dark' ? '#373a40' : '#dee2e6'}` }}>
-              <span>Status: {status}</span>
-              <span style={{ marginLeft: 24 }}>File: {activeFile.name}</span>
-              <span style={{ marginLeft: 24 }}>Language: {activeFile.language}</span>
+                <div style={{ position: "absolute", top: 6, right: 6, display: "flex", gap: 6 }}>
+                  <Button compact size="xs" onClick={() => setShowInput(v => !v)}>
+                    {showInput ? "Hide Input" : "Show Input"}
+                  </Button>
+
+                  <Tooltip label="Copy">
+                    <ActionIcon onClick={handleCopyOutput}><IconCopy size={16} /></ActionIcon>
+                  </Tooltip>
+                </div>
+
+                <pre style={{ whiteSpace: "pre-wrap", marginTop: 30 }}>{output}</pre>
+              </div>
+            </div>
+
+            <div style={{ height: 28, background: theme === "dark" ? "#23272e" : "#eee", paddingLeft: 16, display: "flex", alignItems: "center", color: "#bbb" }}>
+              Status: {status}
             </div>
           </div>
-          {/* Collapsible Sidebar */}
-          <div style={{ width: sidebarOpen ? 360 : 24, transition: 'width 0.2s', background: theme === 'dark' ? '#23272e' : '#f8f9fa', borderLeft: `1px solid ${theme === 'dark' ? '#373a40' : '#dee2e6'}`, height: '100%', position: 'relative', display: 'flex', flexDirection: 'row' }}>
-            {sidebarOpen && <AISidebar
-              aiTutorResponse={aiTutorResponse}
-              aiWriteResponse={aiWriteResponse}
-              onAskTutor={handleAskTutor}
-              onAskWrite={handleAskWrite}
-              onInsertCode={handleInsertCode}
-              theme={theme}
-              chatMessages={chatMessages}
-              onChat={msg => {
-                if (!msg.trim()) return;
-                setChatMessages(msgs => [...msgs, { role: 'user', text: msg }]);
-                fetch(`${import.meta.env.VITE_BACKEND_URL}/tutor`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ prompt: msg }),
-                })
-                  .then(res => res.json())
-                  .then(data => setChatMessages(msgs => [...msgs, { role: 'ai', text: data.response }]))
-                  .catch(e => setChatMessages(msgs => [...msgs, { role: 'ai', text: 'Error: ' + e.message }]));
-              }}
-            />}
-            <ActionIcon onClick={toggleSidebar} style={{ position: 'absolute', top: 8, left: sidebarOpen ? -20 : 2, zIndex: 10, background: theme === 'dark' ? '#23272e' : '#e9ecef', border: `1px solid ${theme === 'dark' ? '#373a40' : '#dee2e6'}` }}>
-              {sidebarOpen ? <IconChevronRight size={16} /> : <IconChevronLeft size={16} />}
-            </ActionIcon>
+
+          <ActionIcon
+  onClick={toggleSidebar}
+  style={{
+    position: "fixed",
+    top: "80px",
+    right: sidebarOpen ? sidebarWidth + 10 : 10,
+    zIndex: 9999,
+    background: theme === "dark" ? "#23272e" : "#e9ecef",
+    border: `1px solid ${theme === "dark" ? "#373a40" : "#dee2e6"}`,
+    transition: "right 0.15s ease"
+  }}
+>
+  {sidebarOpen ? <MdAutoAwesome size={18} /> : <MdAutoAwesome size={18} />}
+</ActionIcon>
+
+
+          {/* RIGHT SIDEBAR */}
+          <div
+            style={{
+              width: sidebarOpen ? sidebarWidth : 24,
+              minWidth: sidebarOpen ? sidebarWidth : 24,
+              background: theme === "dark" ? "#23272e" : "#f8f9fa",
+              borderLeft: `1px solid ${theme === "dark" ? "#373a40" : "#ccc"}`,
+              position: "relative",
+              display: "flex"
+            }}
+          >
+
+            {sidebarOpen && (
+              <div
+                onMouseDown={startSidebarResize}
+                style={{
+                  width: 6,
+                  cursor: "ew-resize",
+                  background: theme === "dark" ? "#333" : "#ccc"
+                }}
+              />
+            )}
+
+            {sidebarOpen && (
+              <div style={{ flex: 1, overflow: "hidden" }}>
+                <AISidebar
+                  aiTutorResponse={aiTutorResponse}
+                  aiWriteResponse={aiWriteResponse}
+                  onAskTutor={handleAskTutor}
+                  onAskWrite={handleAskWrite}
+                  onInsertCode={handleInsertCode}
+                  theme={theme}
+                  chatMessages={chatMessages}
+                  onChat={(msg) => {
+                    if (!msg.trim()) return;
+                    setChatMessages(arr => [...arr, { role: "user", text: msg }]);
+                    fetch(`${import.meta.env.VITE_BACKEND_URL}/tutor`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ prompt: msg }),
+                    })
+                      .then(res => res.json())
+                      .then(data => setChatMessages(arr => [...arr, { role: "ai", text: data.response }]))
+                      .catch(e => setChatMessages(arr => [...arr, { role: "ai", text: "Error: " + e.message }]));
+                  }}
+                />
+              </div>
+            )}
+
           </div>
-      </div>
-        <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} onCommand={handleCommand} theme={theme} />
+        </div>
+
+        <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} theme={theme} />
       </div>
     </MantineProvider>
   );

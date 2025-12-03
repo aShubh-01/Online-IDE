@@ -2,7 +2,8 @@
    SIDEBAR CONTAINER
    ============================================================ */
 .ai-sidebar {
-  width: 360px;
+  width: 100%;             /* ❤️ sidebarWidth from App.jsx */
+  min-width: 0;            /* prevents pushing layout */
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -10,7 +11,9 @@
   background: var(--bg);
   border-left: 1px solid var(--border);
   color: var(--text);
+  box-sizing: border-box;
 }
+
 
 /* LIGHT THEME */
 .ai-sidebar.light {

@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { ActionIcon, Tooltip, Menu, TextInput } from '@mantine/core';
 import { IconUpload, IconDownload, IconX, IconEdit, IconPlus } from '@tabler/icons-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { IconFilePlus } from '@tabler/icons-react';
 
-export default function FileTabs({ files, activeFileIdx, onTabClick, onTabReorder, onRename, onDelete, onUpload, onDownload, theme, onAddTab }) {
+export default function FileTabs({ files, activeFileIdx, onTabClick, onTabReorder, onRename, onDelete, onUpload, onDownload, theme, onAddTab, onRun }) {
   const [renamingIdx, setRenamingIdx] = useState(null);
   const [renameValue, setRenameValue] = useState('');
 
@@ -96,9 +97,10 @@ export default function FileTabs({ files, activeFileIdx, onTabClick, onTabReorde
     display: 'flex',
     alignItems: 'center',
     gap: 16,
-    marginLeft: 20,
+    paddingLeft: 12,   // ← NEW
     flexShrink: 0,
   };
+
   const actionBtnStyle = {
     width: 32,
     height: 32,
@@ -140,9 +142,9 @@ export default function FileTabs({ files, activeFileIdx, onTabClick, onTabReorde
         }}>
           <Droppable droppableId="tabs" direction="horizontal" isDropDisabled={false} isCombineEnabled={false}>
             {provided => (
-              <div 
-                ref={provided.innerRef} 
-                {...provided.droppableProps} 
+              <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
                 style={{ display: 'flex', alignItems: 'center', minWidth: 'fit-content' }}
               >
                 {files.map((f, idx) => (
@@ -210,23 +212,62 @@ export default function FileTabs({ files, activeFileIdx, onTabClick, onTabReorde
         </DragDropContext>
       </div>
       <div style={buttonsBarStyle}>
+
+        {/* RUN BUTTON — placed first */}
+        <Tooltip label="Run Code" position="bottom" withArrow>
+          <button
+            onClick={() => onRun && onRun()}   // IMPORTANT: This triggers run from App.jsx
+            style={{
+              padding: "4px 10px",
+              fontSize: 16,
+              background: isDark ? "#2f9e44" : "#37b24d",
+              color: "white",
+              border: "none",
+              borderRadius: 6,
+              cursor: "pointer",
+              height: 35
+            }}
+          >
+            Run
+          </button>
+        </Tooltip>
+
+                {/* NEW FILE */}
+        <Tooltip label="New File" position="bottom" withArrow>
+          <ActionIcon
+            style={addTabBtnStyle}
+            onClick={onAddTab}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = colors.buttonHover;
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = "transparent";
+            }}
+          >
+            <IconFilePlus size={20} />
+          </ActionIcon>
+        </Tooltip>
+
+        {/* UPLOAD */}
         <Tooltip label="Upload File" position="bottom" withArrow>
-          <ActionIcon 
-            color="gray" 
-            variant="subtle" 
+          <ActionIcon
+            color="gray"
+            variant="subtle"
             component="label"
             size="md"
             style={actionBtnStyle}
             onMouseOver={e => { e.currentTarget.style.background = colors.buttonHover; }}
             onMouseOut={e => { e.currentTarget.style.background = colors.buttonBg; }}
           >
-            <IconUpload size={16} />
+            <IconUpload size={20} />
             <input type="file" hidden onChange={onUpload} />
           </ActionIcon>
         </Tooltip>
+
+        {/* DOWNLOAD */}
         <Tooltip label="Download Current File" position="bottom" withArrow>
-          <ActionIcon 
-            color="gray" 
+          <ActionIcon
+            color="gray"
             variant="subtle"
             size="md"
             style={actionBtnStyle}
@@ -234,20 +275,13 @@ export default function FileTabs({ files, activeFileIdx, onTabClick, onTabReorde
             onMouseOver={e => { e.currentTarget.style.background = colors.buttonHover; }}
             onMouseOut={e => { e.currentTarget.style.background = colors.buttonBg; }}
           >
-            <IconDownload size={16} />
+            <IconDownload size={20} />
           </ActionIcon>
         </Tooltip>
-        <Tooltip label="New File" position="bottom" withArrow>
-          <ActionIcon
-            style={addTabBtnStyle}
-            onClick={onAddTab}
-            onMouseOver={e => { e.currentTarget.style.background = colors.buttonHover; }}
-            onMouseOut={e => { e.currentTarget.style.background = 'transparent'; }}
-          >
-            <IconPlus size={18} />
-          </ActionIcon>
-        </Tooltip>
+
+
       </div>
+
       <style>{`
         .filetabs-scrollbar::-webkit-scrollbar {
           height: 6px;
